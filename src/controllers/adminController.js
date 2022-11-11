@@ -39,7 +39,7 @@ const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    const allStudents = await studentModel.find();
+    const allStudents = await studentModel.find({isDeleted:false});
     res.setHeader("auth-key", token);
 
     return res
@@ -103,12 +103,53 @@ const createStudent = async (req, res) => {
 const filterStudents = async (req, res) => {
   try {
     let filter = req.query;
+        filter.isDeleted = false;
+       let subject = req.query.subject
+
+       if(filter.name&&subject){
+        const result = [];
+      
+        const students = await studentModel.find({isDeleted:false,name:filter.name})
+
+        for(let i =0 ;i<students.length;i++){
+          for(let j = 0; j<students[i].subjects.length;j++){
+                  if(students[i].subjects[j].subject===subject){
+                    result.push(students[i])
+                  }
+          }
+         }
+
+         if(!result.length) return res.status(404).send({status:false,msg:'Not found'})
+           return res.status(200).send({status:true, msg:"success",data:result})
+
+       }
+
+       if(subject){
+        const result = [];
+      
+         const students = await studentModel.find({isDeleted:false})
+         
+         for(let i =0 ;i<students.length;i++){
+          for(let j = 0; j<students[i].subjects.length;j++){
+                  if(students[i].subjects[j].subject===subject){
+                    result.push(students[i])
+                  }
+          }
+         }
+
+         if(!result.length) return res.status(404).send({status:false,msg:'Not found'})
+           return res.status(200).send({status:true, msg:"success",data:result})
+
+       }
+
+       
+
     if (Object.keys(filter).length < 1)
       return res
         .status(400)
         .send({ status: false, msg: "Please Apply filters" });
 
-    const filteredStudents = await studentModel.find({isDeleted:false,filter});
+    const filteredStudents = await studentModel.find(filter);
 
     if (filteredStudents.length < 1) return res.status(404).send({ status: false, msg: "no Student found" });
 
@@ -130,12 +171,12 @@ const deleteStudents = async (req, res) => {
         .status(404)
         .send({ status: false, msg: "No student present with this Id " });
 
-    if (deleteStudents.isDeleted === "true")
+    if (deletedStudent.isDeleted === true)
       return res.status(400).send({ status: false, msg: "Already Deleted" });
     deletedStudent.isDeleted = true;
-    const updateStudent = await deletedStudent.save()
+     deletedStudent.save()
 
-    return res.status(200).send({ status: true, msg: "Deleted" , data:updateStudent});
+    return res.status(200).send({ status: true, msg: "Deleted" , data:deletedStudent});
   } catch (err) {
     return res.status(500).send({ status: false, message: err.message });
   }
